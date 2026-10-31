@@ -15,7 +15,7 @@ PAUSE_SECONDS = 5
 
 questions = json.load(open(QUESTIONS, encoding="utf-8"))
 if len(sys.argv) > 1:
-    questions = questions[-int(sys.argv[1]):]
+    questions = questions[-int(sys.argv[1]) :]
 chunks = chunk_document(load_document(DOC), size=120, overlap=30)
 retriever = Retriever(chunks)
 
@@ -36,7 +36,9 @@ for item in questions:
             "question": item["question"],
             "expected_source": expected,
             "hit": hit_at_k(hits, expected) if expected else False,
-            "correct": contains_keywords(answer, item["keywords"]) if expected else False,
+            "correct": contains_keywords(answer, item["keywords"])
+            if expected
+            else False,
             "refused": is_refusal(answer),
         }
     )

@@ -1,6 +1,6 @@
 import os
 import tempfile
-import time 
+import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
@@ -32,10 +32,12 @@ app.add_middleware(
 
 sessions = OrderedDict()
 
+
 def _purge():
     now = time.monotonic()
     for key in [k for k, (t, _) in sessions.items() if now - t > SESSION_TTL_SECONDS]:
         del sessions[key]
+
 
 def _get_session(session_id):
     _purge()
@@ -43,10 +45,12 @@ def _get_session(session_id):
         raise HTTPException(status_code=404, detail="Session not found or expired")
     return sessions[session_id][1]
 
+
 @app.get("/health")
 def health():
     _purge()
     return {"status": "ok", "sessions": len(sessions)}
+
 
 @app.post("/documents")
 async def upload_document(file: UploadFile = File(...)):
@@ -79,7 +83,12 @@ async def upload_document(file: UploadFile = File(...)):
     while len(sessions) > MAX_SESSIONS:
         sessions.popitem(last=False)
 
-    return {"session_id": session_id, "source": document["source"], "chunks": len(chunks)}
+    return {
+        "session_id": session_id,
+        "source": document["source"],
+        "chunks": len(chunks),
+    }
+
 
 @app.post("/ask")
 def ask(session_id: str = Form(...), question: str = Form(...)):
