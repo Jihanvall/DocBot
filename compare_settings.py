@@ -4,9 +4,7 @@ from src.chunker import chunk_document
 from src.loader import load_document
 from src.retriever import Retriever
 
-questions = [
-    q for q in json.load(open("eval/questions.json", encoding="utf-8")) if q["source"]
-]
+questions = [q for q in json.load(open("eval/questions.json", encoding="utf-8")) if q["source"]]
 document = load_document("data/readme.md")
 
 print("size overlap k hit_rate")

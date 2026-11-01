@@ -20,10 +20,7 @@ class AnswerError(Exception):
 
 
 def build_prompt(question, hits):
-    parts = [
-        f"[{i}] ({h['source']}, part {h['position']})\n{h['text']}"
-        for i, h in enumerate(hits, 1)
-    ]
+    parts = [f"[{i}] ({h['source']}, part {h['position']})\n{h['text']}" for i, h in enumerate(hits, 1)]
     return "Excerpts:\n\n" + "\n\n".join(parts) + f"\n\nQuestion: {question}"
 
 

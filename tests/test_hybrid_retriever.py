@@ -8,10 +8,7 @@ class FakeRetriever:
         self.order = order
 
     def search(self, question, k=3):
-        return [
-            {"source": "a.md", "position": p, "text": f"chunk {p}", "score": 1.0}
-            for p in self.order[:k]
-        ]
+        return [{"source": "a.md", "position": p, "text": f"chunk {p}", "score": 1.0} for p in self.order[:k]]
 
 
 def test_chunk_found_by_both_methods_wins():
