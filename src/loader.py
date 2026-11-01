@@ -25,7 +25,5 @@ def load_document(path):
         text = path.read_text(encoding="utf-8", errors="ignore")
 
     if not text.strip():
-        raise DocumentError(
-            "No readable text in this file. Scanned PDFs are not supported."
-        )
+        raise DocumentError("No readable text in this file. Scanned PDFs are not supported.")
     return {"source": path.name, "text": text}

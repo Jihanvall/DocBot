@@ -11,9 +11,7 @@ def fake_gemini(monkeypatch):
         "answer_question",
         lambda question, hits: {
             "answer": "20 MB [1]",
-            "sources": [
-                {"source": h["source"], "position": h["position"]} for h in hits
-            ],
+            "sources": [{"source": h["source"], "position": h["position"]} for h in hits],
         },
     )
     api.sessions.clear()
@@ -54,9 +52,7 @@ def test_oversized_file_is_rejected(client, monkeypatch):
 
 def test_ask_returns_answer_and_sources(client):
     session_id = _upload(client).json()["session_id"]
-    response = client.post(
-        "/ask", data={"session_id": session_id, "question": "what is the upload limit"}
-    )
+    response = client.post("/ask", data={"session_id": session_id, "question": "what is the upload limit"})
     assert response.status_code == 200
     assert response.json()["answer"] == "20 MB [1]"
     assert response.json()["sources"][0]["source"] == "notes.txt"
@@ -86,7 +82,5 @@ def test_gemini_failure_returns_502(client, monkeypatch):
 
     monkeypatch.setattr(api, "answer_question", fail)
     session_id = _upload(client).json()["session_id"]
-    response = client.post(
-        "/ask", data={"session_id": session_id, "question": "upload limit"}
-    )
+    response = client.post("/ask", data={"session_id": session_id, "question": "upload limit"})
     assert response.status_code == 502

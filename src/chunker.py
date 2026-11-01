@@ -18,7 +18,4 @@ def split_text(text, size=500, overlap=100):
 
 def chunk_document(document, size=500, overlap=100):
     pieces = split_text(document["text"], size, overlap)
-    return [
-        {"source": document["source"], "position": i, "text": piece}
-        for i, piece in enumerate(pieces)
-    ]
+    return [{"source": document["source"], "position": i, "text": piece} for i, piece in enumerate(pieces)]
