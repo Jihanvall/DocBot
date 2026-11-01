@@ -1,11 +1,13 @@
-from pathlib import Path 
+from pathlib import Path
 
 from pypdf import PdfReader
 
 SUPPORTED = {".txt", ".md", ".pdf"}
 
+
 class DocumentError(Exception):
     pass
+
 
 def load_document(path):
     path = Path(path)
@@ -13,7 +15,7 @@ def load_document(path):
     if suffix not in SUPPORTED:
         raise DocumentError(f"Unsupported file type: {suffix or 'none'}")
 
-    if suffix == '.pdf':
+    if suffix == ".pdf":
         try:
             reader = PdfReader(str(path))
             text = "\n".join((page.extract_text() or "") for page in reader.pages)

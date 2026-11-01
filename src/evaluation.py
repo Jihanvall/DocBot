@@ -1,14 +1,18 @@
 from src.answerer import NO_ANSWER
 
+
 def hit_at_k(hits, expected_source):
     return any(h["source"] == expected_source for h in hits)
+
 
 def contains_keywords(answer, keywords):
     text = answer.lower()
     return all(k.lower() in text for k in keywords)
 
+
 def is_refusal(answer):
     return answer.strip() == NO_ANSWER
+
 
 def summarize(rows):
     answerable = [r for r in rows if r["expected_source"] is not None]

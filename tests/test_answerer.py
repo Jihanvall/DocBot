@@ -4,7 +4,12 @@ from src import answerer
 from src.answerer import NO_ANSWER, AnswerError, answer_question, build_prompt
 
 HITS = [
-    {"source": "a.md", "position": 0, "text": "the upload limit is 20 megabytes", "score": 0.9},
+    {
+        "source": "a.md",
+        "position": 0,
+        "text": "the upload limit is 20 megabytes",
+        "score": 0.9,
+    },
     {"source": "b.md", "position": 2, "text": "docker builds the image", "score": 0.3},
 ]
 

@@ -1,4 +1,4 @@
-import os 
+import os
 
 from dotenv import load_dotenv
 from google import genai
@@ -14,12 +14,18 @@ SYSTEM_PROMPT = """You answer questions using only the numbered excerpts provide
 - Do not use outside knowledge and do not invent facts.
 - Keep the answer short and cite the excerpts you used like [1] or [2]."""
 
+
 class AnswerError(Exception):
     pass
 
+
 def build_prompt(question, hits):
-    parts = [f"[{i}] ({h['source']}, part {h['position']})\n{h['text']}" for i, h in enumerate(hits, 1)]
+    parts = [
+        f"[{i}] ({h['source']}, part {h['position']})\n{h['text']}"
+        for i, h in enumerate(hits, 1)
+    ]
     return "Excerpts:\n\n" + "\n\n".join(parts) + f"\n\nQuestion: {question}"
+
 
 def answer_question(question, hits):
     if not hits:
@@ -28,8 +34,8 @@ def answer_question(question, hits):
     try:
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = client.models.generate_content(
-            model = MODEL,
-            contents=build_prompt(question,hits),
+            model=MODEL,
+            contents=build_prompt(question, hits),
             config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
         )
         text = (response.text or "").strip()

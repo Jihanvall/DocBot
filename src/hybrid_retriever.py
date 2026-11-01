@@ -1,5 +1,6 @@
 RRF_CONSTANT = 60
 
+
 class HybridRetriever:
     def __init__(self, retrievers, pool=10):
         if not retrievers:

@@ -8,7 +8,7 @@ def split_text(text, size=500, overlap=100):
     chunks = []
     step = size - overlap
     for start in range(0, len(words), step):
-        piece = words[start:start + size]
+        piece = words[start : start + size]
         if piece:
             chunks.append(" ".join(piece))
         if start + size >= len(words):
