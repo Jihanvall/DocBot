@@ -1,23 +1,37 @@
+import argparse
 import json
-import sys
 import time
 
 from src.answerer import answer_question
 from src.chunker import chunk_document
+from src.embedding_retriever import EmbeddingRetriever
 from src.evaluation import contains_keywords, hit_at_k, is_refusal, summarize
+from src.hybrid_retriever import HybridRetriever
 from src.loader import load_document
 from src.retriever import Retriever
 
-DOC = "data/readme.md"
-QUESTIONS = "eval/questions.json"
+parser = argparse.ArgumentParser()
+parser.add_argument("--doc", default="data/readme.md")
+parser.add_argument("--questions", default="eval/questions.json")
+parser.add_argument("--last", type=int, default=None)
+parser.add_argument("--method", choices=["tfidf", "embedding", "hybrid"], default="tfidf")
+args = parser.parse_args()
+
 K = 3
 PAUSE_SECONDS = 5
 
-questions = json.load(open(QUESTIONS, encoding="utf-8"))
-if len(sys.argv) > 1:
-    questions = questions[-int(sys.argv[1]) :]
-chunks = chunk_document(load_document(DOC), size=120, overlap=30)
-retriever = Retriever(chunks)
+with open(args.questions, encoding="utf-8") as f:
+    questions = json.load(f)
+if args.last:
+    questions = questions[-args.last :]
+
+chunks = chunk_document(load_document(args.doc), size=120, overlap=30)
+if args.method == "tfidf":
+    retriever = Retriever(chunks)
+elif args.method == "embedding":
+    retriever = EmbeddingRetriever(chunks)
+else:
+    retriever = HybridRetriever([Retriever(chunks), EmbeddingRetriever(chunks)])
 
 rows = []
 for item in questions:
@@ -43,7 +57,6 @@ for item in questions:
     row = rows[-1]
     status = "OK" if row["correct"] else ("REFUSED" if row["refused"] else "MISS")
     print(status.ljust(8), item["question"])
-    if status == "MISS":
-        print("         answer:", answer[:200])
+    print("      answer:", answer[:300].replace("\n", " "))
 
 print(json.dumps(summarize(rows), indent=2))
