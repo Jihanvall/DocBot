@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 from dotenv import load_dotenv
@@ -8,7 +9,8 @@ from google.genai import types
 load_dotenv()
 
 EMBED_MODEL = "gemini-embedding-001"
-BATCH = 100
+BATCH = 50
+PAUSE_SECONDS = 31
 
 
 class EmbeddingError(Exception):
@@ -25,6 +27,8 @@ def embed_texts(texts, task_type=None):
                 model=EMBED_MODEL, contents=texts[i : i + BATCH], config=config
             )
             vectors.extend(e.values for e in response.embeddings)
+            if i + BATCH < len(texts):
+                time.sleep(PAUSE_SECONDS)
     except Exception as e:
         raise EmbeddingError(f"Could not get embeddings from Gemini: {e}")
     return np.array(vectors, dtype=float)

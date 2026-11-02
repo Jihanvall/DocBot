@@ -1,0 +1,37 @@
+[
+  {
+    "question": "How long ago did the universe begin, according to the book?",
+    "source": "sapiens_part.txt",
+    "keywords": ["13.5"]
+  },
+  {
+    "question": "Which species of human lived in Europe and western Asia before Sapiens?",
+    "source": "sapiens_part.txt",
+    "keywords": ["Neanderthal"]
+  },
+  {
+    "question": "What name does the author give to the change that began about 70,000 years ago?",
+    "source": "sapiens_part.txt",
+    "keywords": ["Cognitive Revolution"]
+  },
+  {
+    "question": "What genus do humans belong to?",
+    "source": "sapiens_part.txt",
+    "keywords": ["Homo"]
+  },
+  {
+    "question": "What did people learn to control that changed their diet and their place among animals?",
+    "source": "sapiens_part.txt",
+    "keywords": ["fire"]
+  },
+  {
+    "question": "Who won the football world cup in 1998?",
+    "source": null,
+    "keywords": []
+  },
+  {
+    "question": "What is the author's opinion on the best programming language?",
+    "source": null,
+    "keywords": []
+  }
+]
