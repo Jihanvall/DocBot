@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from src.embedding_cache import cached_embed
+
 load_dotenv()
 
 EMBED_MODEL = "gemini-embedding-001"
@@ -40,7 +42,9 @@ class EmbeddingRetriever:
             raise ValueError("chunks must not be empty")
         self.chunks = chunks
         self.embed = embed
-        self.matrix = self._normalize(embed([c["text"] for c in chunks], "RETRIEVAL_DOCUMENT"))
+        self.matrix = self._normalize(
+            cached_embed(embed, [c["text"] for c in chunks], EMBED_MODEL, "RETRIEVAL_DOCUMENT")
+        )
 
     @staticmethod
     def _normalize(m):
