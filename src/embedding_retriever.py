@@ -53,7 +53,7 @@ class EmbeddingRetriever:
         return m / norms
 
     def search(self, question, k=3):
-        query = self._normalize(self.embed([question], "RETRIEVAL_QUERY"))
+        query = self._normalize(cached_embed(self.embed, [question], EMBED_MODEL, "RETRIEVAL_QUERY"))
         scores = (self.matrix @ query[0]).ravel()
         order = scores.argsort()[::-1][:k]
         return [

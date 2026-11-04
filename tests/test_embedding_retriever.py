@@ -40,3 +40,35 @@ def test_k_limits_results():
 def test_empty_chunks_rejected():
     with pytest.raises(ValueError):
         EmbeddingRetriever([], embed=fake_embed)
+
+
+def test_chunk_embeddings_are_cached_between_retrievers(tmp_path, monkeypatch):
+    import src.embedding_cache as cache
+
+    monkeypatch.setattr(cache, "CACHE_DIR", tmp_path)
+    calls = []
+
+    def counting_embed(texts, task_type=None):
+        calls.append(task_type)
+        return fake_embed(texts, task_type)
+
+    EmbeddingRetriever(CHUNKS, embed=counting_embed)
+    EmbeddingRetriever(CHUNKS, embed=counting_embed)
+    assert calls.count("RETRIEVAL_DOCUMENT") == 1
+
+
+def test_repeated_question_does_not_call_the_embedder_again(tmp_path, monkeypatch):
+    import src.embedding_cache as cache
+
+    monkeypatch.setattr(cache, "CACHE_DIR", tmp_path)
+    calls = []
+
+    def counting_embed(texts, task_type=None):
+        calls.append(texts)
+        return fake_embed(texts, task_type)
+
+    r = EmbeddingRetriever(CHUNKS, embed=counting_embed)
+    r.search("how big can a file be", k=1)
+    r.search("how big can a file be", k=1)
+    question_calls = [c for c in calls if c == ["how big can a file be"]]
+    assert len(question_calls) == 1
