@@ -1,12 +1,12 @@
-# DocChatbot
+# DocBot
 
 ![CI](https://github.com/Jihanvall/ask-my-docs/actions/workflows/ci.yml/badge.svg)
 
 Chat with your own documents. Attach a `.txt`, `.md` or text-based `.pdf` file with the **+** button, ask questions, and get answers that show the passages they came from. If the document does not contain the answer, the assistant says so instead of guessing.
 
-![DocChatbot screenshot](docs/screenshot.png)
+![DocBot screenshot](docs/screenshot.png)
 
-The repository is named `ask-my-docs`; the app is called DocChatbot.
+The repository is named `ask-my-docs`; the app is called DocBot.
 
 ## Features
 
