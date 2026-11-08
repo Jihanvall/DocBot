@@ -84,3 +84,63 @@ def test_gemini_failure_returns_502(client, monkeypatch):
     session_id = _upload(client).json()["session_id"]
     response = client.post("/ask", data={"session_id": session_id, "question": "upload limit"})
     assert response.status_code == 502
+
+
+class FakeEmbeddingRetriever:
+    def __init__(self, chunks):
+        self.chunks = chunks
+
+    def search(self, question, k=3):
+        return [{**c, "score": 0.9} for c in self.chunks[:k]]
+
+
+def test_ask_returns_the_retrieved_passages(client):
+    session_id = _upload(client).json()["session_id"]
+    body = client.post("/ask", data={"session_id": session_id, "question": "what is the upload limit"}).json()
+    assert body["refused"] is False
+    passage = body["passages"][0]
+    assert passage["source"] == "notes.txt"
+    assert "20 megabytes" in passage["text"]
+
+
+def test_refusal_is_flagged(client, monkeypatch):
+    monkeypatch.setattr(api, "answer_question", lambda q, h: {"answer": api.NO_ANSWER, "sources": []})
+    session_id = _upload(client).json()["session_id"]
+    body = client.post("/ask", data={"session_id": session_id, "question": "upload limit"}).json()
+    assert body["refused"] is True
+
+
+def test_unknown_method_is_rejected(client):
+    response = client.post(
+        "/documents",
+        files={"file": ("a.txt", b"hello world", "text/plain")},
+        data={"method": "magic"},
+    )
+    assert response.status_code == 400
+
+
+def test_embedding_method_is_used_when_chosen(client, monkeypatch):
+    monkeypatch.setattr(api, "EmbeddingRetriever", FakeEmbeddingRetriever)
+    response = client.post(
+        "/documents",
+        files={"file": ("a.txt", b"the upload limit is 20 megabytes", "text/plain")},
+        data={"method": "embedding"},
+    )
+    assert response.json()["method"] == "embedding"
+    session_id = response.json()["session_id"]
+    body = client.post("/ask", data={"session_id": session_id, "question": "limit"}).json()
+    assert body["passages"][0]["score"] == 0.9
+
+
+def test_embedding_failure_on_upload_returns_502(client, monkeypatch):
+    class Failing:
+        def __init__(self, chunks):
+            raise api.EmbeddingError("quota")
+
+    monkeypatch.setattr(api, "EmbeddingRetriever", Failing)
+    response = client.post(
+        "/documents",
+        files={"file": ("a.txt", b"hello world", "text/plain")},
+        data={"method": "embedding"},
+    )
+    assert response.status_code == 502
