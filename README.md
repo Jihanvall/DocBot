@@ -1,8 +1,21 @@
-# Ask My Docs
+# DocChatbot
 
 ![CI](https://github.com/Jihanvall/ask-my-docs/actions/workflows/ci.yml/badge.svg)
 
-A question-answering system over your own documents. You upload a `.txt`, `.md` or text-based `.pdf` file, ask a question, and get an answer with the sources it came from. If the documents do not contain the answer, it says so instead of guessing.
+Chat with your own documents. Attach a `.txt`, `.md` or text-based `.pdf` file with the **+** button, ask questions, and get answers that show the passages they came from. If the document does not contain the answer, the assistant says so instead of guessing.
+
+![DocChatbot screenshot](docs/screenshot.png)
+
+The repository is named `ask-my-docs`; the app is called DocChatbot.
+
+## Features
+
+- Chat interface with a **+** button to attach a document, or drag and drop a file anywhere on the page.
+- Three search methods, chosen from a menu: keywords (TF-IDF), meaning (Gemini embeddings) and a hybrid of both.
+- Every answer cites numbered passages, and each passage can be opened to read the original text with a relevance bar.
+- A clear "I could not find this" message when the document has no answer.
+- Loading states for indexing and answering, a copy button, and a layout that works on phones.
+- Measured quality: an evaluation set, a retrieval comparison and cached embeddings.
 
 ## How it works
 
@@ -10,10 +23,10 @@ A question-answering system over your own documents. You upload a `.txt`, `.md` 
 2. **Chunking** (`src/chunker.py`): splits the text into overlapping chunks of words, each keeping its source file and position.
 3. **Retrieval**: finds the chunks closest to the question. Three methods are available:
    - TF-IDF (`src/retriever.py`): matches words, runs locally.
-   - Embeddings (`src/embedding_retriever.py`): matches meaning using Gemini embeddings.
+   - Embeddings (`src/embedding_retriever.py`): matches meaning using Gemini embeddings, with an on-disk cache (`src/embedding_cache.py`).
    - Hybrid (`src/hybrid_retriever.py`): combines both rankings with reciprocal rank fusion.
 4. **Answering** (`src/answerer.py`): sends the question and the top chunks to Gemini, which must answer only from them and cite the excerpts. With no relevant chunk, it answers "I don't know" without calling Gemini.
-5. **API and interface**: a FastAPI backend (`api.py`) and a React page (`frontend/`).
+5. **API and interface**: a FastAPI backend (`api.py`) and a React chat page (`frontend/`).
 
 ## Setup
 
@@ -55,15 +68,19 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`, upload a document and ask a question. The API documentation is at `http://127.0.0.1:8000/docs`.
+Open `http://localhost:5173`, press **+** to attach a document, then ask your questions. The search method is chosen from the menu in the top bar and applies to the next document you attach. Keywords are instant; meaning and hybrid call Gemini for every part of the document, so long files can take a few minutes on the free tier the first time.
+
+The API documentation is at `http://127.0.0.1:8000/docs`.
 
 ## API
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | GET | `/health` | Status and number of indexed documents |
-| POST | `/documents` | Uploads a file and indexes it, returns a `session_id` |
-| POST | `/ask` | Answers a question for a `session_id`, with sources |
+| POST | `/documents` | Uploads a file and indexes it with the chosen `method` (`tfidf`, `embedding` or `hybrid`), returns a `session_id` |
+| POST | `/ask` | Answers a question for a `session_id`; returns the answer, its sources, the retrieved `passages` and a `refused` flag |
+
+Unsupported files are rejected with 400, files over the size limit with 413, unknown sessions with 404, and Gemini failures with 502.
 
 ## Evaluation
 
@@ -75,16 +92,15 @@ python run_eval.py --method embedding --doc data/sapiens_part.txt --questions ev
 python compare_retrievers.py --doc data/sapiens_part.txt --questions eval/sapiens_questions.json
 ```
 
-`--method` chooses the retrieval method: `tfidf` (default), `embedding` or `hybrid` .
+`--method` chooses the retrieval method: `tfidf` (default), `embedding` or `hybrid`.
 
 ### Retrieval: does a retrieved chunk contain the expected keywords?
 
-
 | Document | Method | k=1 | k=3 |
 | --- | --- | --- | --- |
-| This README (technical) | TF-IDF | 0.75 | 1.00 |
-| This README (technical) | Embedding | 0.50 | 0.58 |
-| This README (technical) | Hybrid | 0.75 | 1.00 |
+| Technical README | TF-IDF | 0.75 | 1.00 |
+| Technical README | Embedding | 0.50 | 0.58 |
+| Technical README | Hybrid | 0.75 | 1.00 |
 | Book chapter (narrative) | TF-IDF | 0.60 | 0.60 |
 | Book chapter (narrative) | Embedding | 0.80 | 1.00 |
 | Book chapter (narrative) | Hybrid | 0.60 | 0.80 |
@@ -93,7 +109,7 @@ python compare_retrievers.py --doc data/sapiens_part.txt --questions eval/sapien
 
 | Document | Method | Keyword accuracy | Correct refusals |
 | --- | --- | --- | --- |
-| This README (technical) | TF-IDF | 0.92 | 1.00 |
+| Technical README | TF-IDF | 0.92 | 1.00 |
 | Book chapter (narrative) | TF-IDF | 0.40 | 1.00 |
 | Book chapter (narrative) | Embedding | 1.00 | 1.00 |
 
@@ -114,26 +130,43 @@ The book chapter comes from a copyrighted book, so neither the text nor the cach
 - The question sets are small (12 answerable README questions, 5 answerable book questions), so every number is indicative only. One question moves a result by 8 to 20 percent.
 - The questions were written by the author, and the keyword check measures words, not meaning: a correct answer phrased differently counts as a miss.
 - `hit rate` is not reported because it is always 1.0 with a single document.
+- Each question is answered on its own: the chat does not remember earlier questions, so follow-ups such as "and what happened next?" are not understood.
+- Indexing with embeddings blocks until it finishes; long documents on the free tier can take minutes.
 - The embeddings and the answers need Gemini, whose free tier has request limits.
 - Indexed documents live in server memory and are lost on restart.
 
+## Development
 
-## Tests
+Install the pre-commit hook once, so ruff checks and formats the code before every commit:
 
 ```
+pip install pre-commit ruff
+pre-commit install
+```
+
+Run the checks by hand:
+
+```
+ruff check . --fix
+ruff format .
 pytest -v
+cd frontend
+npm run build
 ```
 
-The tests use fake Gemini responses, so they need no API key. GitHub Actions runs them on every push and pull request.
+The tests use fake Gemini responses, so they need no API key. On every push and pull request, GitHub Actions runs ruff, the Python tests and the frontend build. The `main` branch only accepts changes through pull requests.
 
 ## Project structure
 
 ```
-api.py                  FastAPI backend
-src/                    loader, chunker, retrievers, answerer, evaluation
-frontend/               React page
-eval/questions.json     evaluation questions
-run_eval.py             answer evaluation
-compare_retrievers.py   retrieval comparison
-tests/                  pytest suite
+api.py                     FastAPI backend
+src/                       loader, chunker, retrievers, embedding cache, answerer, evaluation
+frontend/                  React chat page
+eval/                      evaluation questions
+run_eval.py                answer evaluation
+compare_retrievers.py      retrieval comparison (TF-IDF, embeddings, hybrid)
+compare_settings.py        chunk size and top-k comparison
+tests/                     pytest suite
+ruff.toml                  linter and formatter settings
+.pre-commit-config.yaml    pre-commit hooks
 ```
