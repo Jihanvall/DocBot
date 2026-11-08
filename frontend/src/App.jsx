@@ -307,7 +307,7 @@ function App() {
               <DocIcon />
             </span>
             <div>
-              <h1>DocChatbot</h1>
+              <h1>DocBot</h1>
               <small>Chat with your documents</small>
             </div>
           </div>

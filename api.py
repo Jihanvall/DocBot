@@ -8,11 +8,14 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.answerer import AnswerError, answer_question
+from src.answerer import NO_ANSWER, AnswerError, answer_question
 from src.chunker import chunk_document
+from src.embedding_retriever import EmbeddingError, EmbeddingRetriever
+from src.hybrid_retriever import HybridRetriever
 from src.loader import SUPPORTED, DocumentError, load_document
 from src.retriever import Retriever
 
+METHODS = {"tfidf", "embedding", "hybrid"}
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "10"))
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", "3600"))
 MAX_SESSIONS = int(os.getenv("MAX_SESSIONS", "20"))
@@ -44,6 +47,14 @@ def _get_session(session_id):
     return sessions[session_id][1]
 
 
+def build_retriever(chunks, method):
+    if method == "tfidf":
+        return Retriever(chunks)
+    if method == "embedding":
+        return EmbeddingRetriever(chunks)
+    return HybridRetriever([Retriever(chunks), EmbeddingRetriever(chunks)])
+
+
 @app.get("/health")
 def health():
     _purge()
@@ -51,7 +62,13 @@ def health():
 
 
 @app.post("/documents")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), method: str = Form("tfidf")):
+    if method not in METHODS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown method. Use one of: {', '.join(sorted(METHODS))}",
+        )
+
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in SUPPORTED:
         raise HTTPException(
@@ -75,9 +92,14 @@ async def upload_document(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail=str(e))
 
     chunks = chunk_document(document)
+    try:
+        retriever = build_retriever(chunks, method)
+    except EmbeddingError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
     session_id = str(uuid.uuid4())
     _purge()
-    sessions[session_id] = (time.monotonic(), Retriever(chunks))
+    sessions[session_id] = (time.monotonic(), retriever)
     while len(sessions) > MAX_SESSIONS:
         sessions.popitem(last=False)
 
@@ -85,6 +107,7 @@ async def upload_document(file: UploadFile = File(...)):
         "session_id": session_id,
         "source": document["source"],
         "chunks": len(chunks),
+        "method": method,
     }
 
 
@@ -93,8 +116,20 @@ def ask(session_id: str = Form(...), question: str = Form(...)):
     if not question.strip():
         raise HTTPException(status_code=400, detail="The question is empty")
     retriever = _get_session(session_id)
-    hits = retriever.search(question, k=3)
     try:
-        return answer_question(question, hits)
-    except AnswerError as e:
+        hits = retriever.search(question, k=3)
+        result = answer_question(question, hits)
+    except (AnswerError, EmbeddingError) as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+    result["refused"] = result["answer"].strip() == NO_ANSWER
+    result["passages"] = [
+        {
+            "source": h["source"],
+            "position": h["position"],
+            "text": h["text"],
+            "score": round(h["score"], 3),
+        }
+        for h in hits
+    ]
+    return result
