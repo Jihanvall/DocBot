@@ -16,6 +16,7 @@ The repository is named `ask-my-docs`; the app is called DocBot.
 - A clear "I could not find this" message when the document has no answer.
 - Loading states for indexing and answering, a copy button, and a layout that works on phones.
 - Measured quality: an evaluation set, a retrieval comparison and cached embeddings.
+- Follow-up questions work: the chat remembers the last messages and rewrites a follow-up such as "and then?" into a standalone question before searching.
 
 ## How it works
 
@@ -130,7 +131,7 @@ The book chapter comes from a copyrighted book, so neither the text nor the cach
 - The question sets are small (12 answerable README questions, 5 answerable book questions), so every number is indicative only. One question moves a result by 8 to 20 percent.
 - The questions were written by the author, and the keyword check measures words, not meaning: a correct answer phrased differently counts as a miss.
 - `hit rate` is not reported because it is always 1.0 with a single document.
-- Each question is answered on its own: the chat does not remember earlier questions, so follow-ups such as "and what happened next?" are not understood.
+- A follow-up question costs one extra Gemini request (to rewrite it), and the rewriting is not evaluated yet.
 - Indexing with embeddings blocks until it finishes; long documents on the free tier can take minutes.
 - The embeddings and the answers need Gemini, whose free tier has request limits.
 - Indexed documents live in server memory and are lost on restart.

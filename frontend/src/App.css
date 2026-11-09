@@ -720,6 +720,15 @@
   }
 }
 
+.rewritten {
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: #f1efff;
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
 @media (max-width: 560px) {
   .shell {
     padding: 0 10px;
