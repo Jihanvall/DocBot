@@ -60,6 +60,14 @@ Start the backend:
 ```
 uvicorn api:app --reload
 ```
+Or run everything in Docker:
+
+```
+docker build -t docbot .
+docker run --rm -p 8000:8000 --env-file .env docbot
+```
+
+The container serves the API and the built web page, so after `docker run` just open `http://localhost:8000`. The Gemini key is passed at run time from `.env` and is never stored in the image.
 
 Start the frontend in a second terminal:
 
@@ -170,4 +178,6 @@ compare_settings.py        chunk size and top-k comparison
 tests/                     pytest suite
 ruff.toml                  linter and formatter settings
 .pre-commit-config.yaml    pre-commit hooks
+Dockerfile                 backend container image
+.dockerignore              files kept out of the image
 ```
