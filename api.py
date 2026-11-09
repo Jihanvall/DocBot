@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.answerer import NO_ANSWER, AnswerError, answer_question
 from src.chunker import chunk_document
@@ -158,3 +159,8 @@ def ask(session_id: str = Form(...), question: str = Form(...), history: str = F
         for h in hits
     ]
     return result
+
+
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="site")

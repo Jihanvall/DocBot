@@ -169,3 +169,12 @@ def test_invalid_history_is_rejected(client):
     session_id = _upload(client).json()["session_id"]
     response = client.post("/ask", data={"session_id": session_id, "question": "q", "history": "not json"})
     assert response.status_code == 400
+
+
+def test_site_is_served_when_the_static_folder_exists(tmp_path):
+    from fastapi.staticfiles import StaticFiles
+
+    (tmp_path / "index.html").write_text("<h1>DocBot</h1>")
+    site = api.FastAPI()
+    site.mount("/", StaticFiles(directory=tmp_path, html=True))
+    assert "DocBot" in TestClient(site).get("/").text
