@@ -144,3 +144,28 @@ def test_embedding_failure_on_upload_returns_502(client, monkeypatch):
         data={"method": "embedding"},
     )
     assert response.status_code == 502
+
+
+def test_follow_up_uses_the_rewritten_question(client, monkeypatch):
+    monkeypatch.setattr(api, "rewrite_question", lambda q, h: "upload limit megabytes")
+    session_id = _upload(client).json()["session_id"]
+    history = '[{"role": "user", "text": "what is the upload limit?"}]'
+    body = client.post(
+        "/ask", data={"session_id": session_id, "question": "and in total?", "history": history}
+    ).json()
+    assert body["standalone_question"] == "upload limit megabytes"
+
+
+def test_without_history_the_question_is_not_rewritten(client, monkeypatch):
+    seen = []
+    monkeypatch.setattr(api, "rewrite_question", lambda q, h: seen.append(h) or q)
+    session_id = _upload(client).json()["session_id"]
+    body = client.post("/ask", data={"session_id": session_id, "question": "upload limit"}).json()
+    assert seen == [[]]
+    assert body["standalone_question"] == "upload limit"
+
+
+def test_invalid_history_is_rejected(client):
+    session_id = _upload(client).json()["session_id"]
+    response = client.post("/ask", data={"session_id": session_id, "question": "q", "history": "not json"})
+    assert response.status_code == 400

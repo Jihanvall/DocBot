@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import time
@@ -14,6 +15,7 @@ from src.embedding_retriever import EmbeddingError, EmbeddingRetriever
 from src.hybrid_retriever import HybridRetriever
 from src.loader import SUPPORTED, DocumentError, load_document
 from src.retriever import Retriever
+from src.rewriter import MAX_TURNS, rewrite_question
 
 METHODS = {"tfidf", "embedding", "hybrid"}
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "10"))
@@ -53,6 +55,26 @@ def build_retriever(chunks, method):
     if method == "embedding":
         return EmbeddingRetriever(chunks)
     return HybridRetriever([Retriever(chunks), EmbeddingRetriever(chunks)])
+
+
+def parse_history(raw):
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="The history must be valid JSON")
+    if not isinstance(data, list):
+        raise HTTPException(status_code=400, detail="The history must be a list")
+    clean = []
+    for item in data[-MAX_TURNS:]:
+        if (
+            isinstance(item, dict)
+            and item.get("role") in {"user", "assistant"}
+            and isinstance(item.get("text"), str)
+        ):
+            clean.append({"role": item["role"], "text": item["text"][:500]})
+    return clean
 
 
 @app.get("/health")
@@ -112,17 +134,20 @@ async def upload_document(file: UploadFile = File(...), method: str = Form("tfid
 
 
 @app.post("/ask")
-def ask(session_id: str = Form(...), question: str = Form(...)):
+def ask(session_id: str = Form(...), question: str = Form(...), history: str = Form("")):
     if not question.strip():
         raise HTTPException(status_code=400, detail="The question is empty")
+    turns = parse_history(history)
     retriever = _get_session(session_id)
+    standalone = rewrite_question(question, turns)
     try:
-        hits = retriever.search(question, k=3)
-        result = answer_question(question, hits)
+        hits = retriever.search(standalone, k=3)
+        result = answer_question(standalone, hits)
     except (AnswerError, EmbeddingError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
     result["refused"] = result["answer"].strip() == NO_ANSWER
+    result["standalone_question"] = standalone
     result["passages"] = [
         {
             "source": h["source"],

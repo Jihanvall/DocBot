@@ -161,6 +161,9 @@ function BotAnswer({ message }) {
 
   return (
     <>
+      {message.rewritten && (
+        <p className="rewritten">Searched for: {message.rewritten}</p>
+      )}
       {message.refused ? (
         <p className="answer refused-text">
           I could not find this in the document, so I will not guess. Try rewording the question or
@@ -177,6 +180,24 @@ function BotAnswer({ message }) {
       {message.passages?.length > 0 && <Sources passages={message.passages} />}
     </>
   );
+}
+
+function buildHistory(messages) {
+  const lastReady = messages.map((m) => m.kind).lastIndexOf("ready");
+  return messages
+  .slice(lastReady + 1)
+  .map((m) => {
+    if (m.role === "user" && m.kind === "text") return { role: "user", text: m.text };
+    if (m.role === "bot" && m.kind === "answer" && !m.loading && m.text) {
+      return {
+        role: "assistant",
+        text: m.refused ? "I could not find this in the document." : m.text.slice(0, 500),
+      };
+    }
+    return null;
+  })
+  .filter(Boolean)
+  .slice(-6)
 }
 
 function App() {
@@ -237,6 +258,7 @@ function App() {
     e.preventDefault();
     const question = input.trim();
     if (!question || !sessionId || thinking || indexing) return;
+    const history = buildHistory(messages);
     setInput("");
     push({ role: "user", kind: "text", text: question });
     const botId = push({ role: "bot", kind: "answer", loading: true });
@@ -245,6 +267,7 @@ function App() {
       const form = new FormData();
       form.append("session_id", sessionId);
       form.append("question", question);
+      form.append("history", JSON.stringify(history));
       const response = await fetch(`${API_URL}/ask`, { method: "POST", body: form });
       if (!response.ok) throw new Error(await readError(response));
       const data = await response.json();
@@ -253,6 +276,7 @@ function App() {
         text: data.answer,
         refused: data.refused,
         passages: data.passages,
+        rewritten: data.standalone_question !== question ? data.standalone_question : null,
       });
     } catch (err) {
       patch(botId, { kind: "error", loading: false, text: err.message });
